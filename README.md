@@ -8,8 +8,9 @@
 #### 🚀 Update : v8 (2026-04-11)
 
 ##### 📊 v8 Summary (Current)
-- **Churn AUC**: 0.7926 (Gap 0.05) 🟢
-- **LTV RMSE**: 1.35M (Stagnant) 🔴
+- **Churn AUC** : 0.7926 (Gap 0.05) 🟢
+- **LTV RMSE** : 1.35M (Stagnant) 🔴
+- **Total Score** : 0.4664
 - **Key Discovery**: `card_loan` was a "mirage" signal; `Age` is the real driver for Churn=0.
 
 ##### 🔍 Key Issues
