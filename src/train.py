@@ -12,11 +12,11 @@ warnings.filterwarnings('ignore')
 # ==========================================
 # 1. 경로 및 설정
 # ==========================================
-BASE = "/Users/rim/Desktop/workspace/project_1/KDISS-2026/2회 경진대회 데이터"
+BASE = "/Users/rim/Desktop/workspace/project_1/KDISS-2026/data"
 SEED = 312
 
 # ==========================================
-# 2. 전처리 함수 (기존 로직 유지)
+# 2. 전처리 함수 
 # ==========================================
 def get_features(cust_path, tran_path, fin_path, target_df=None):
     cust = pd.read_csv(cust_path)
@@ -96,7 +96,7 @@ LTV_PARAMS = {
 }
 
 # ==========================================
-# 4. 최종 학습 및 앙상블 (5-Fold)
+# 4. 최종 학습 (5-Fold)
 # ==========================================
 X_train_cat = train_df_raw.drop(columns=['customer_id', 'target_churn', 'target_ltv']).copy()
 X_test_cat = test_df_raw[X_train_cat.columns].copy()
@@ -136,20 +136,19 @@ for fold, (t_idx, v_idx) in enumerate(skf.split(X_lgb, train_df['stratify_col'])
     m_l_l = lgb.LGBMRegressor(**LTV_PARAMS).fit(X_tr_l, yl_tr, eval_set=[(X_vl_l, yl_vl)], 
                                                  callbacks=[lgb.early_stopping(200), lgb.log_evaluation(-1)])
     
-    # 모델 2: CatBoost (범주형 데이터 강점 활용)
+    # 모델 2: CatBoost (범주형 데이터)
     m_c_cb = CatBoostClassifier(iterations=5000, learning_rate=0.01, depth=6, random_seed=SEED, 
                                 verbose=0, cat_features=cat_cols).fit(X_tr_c, yc_tr, eval_set=(X_vl_c, yc_vl))
     m_l_cb = CatBoostRegressor(iterations=3000, learning_rate=0.01, depth=8, random_seed=SEED, 
                                verbose=0, cat_features=cat_cols).fit(X_tr_c, yl_tr, eval_set=(X_vl_c, yl_vl))
 
-    # 앙상블 (LGBM + CatBoost 산술 평균)
+    # 앙상블 (LGBM + CatBoost)
     v_churn = (m_c_l.predict_proba(X_vl_l)[:, 1] + m_c_cb.predict_proba(X_vl_c)[:, 1]) / 2
     v_ltv = (np.maximum(m_l_l.predict(X_vl_l), 0)**2 + np.maximum(m_l_cb.predict(X_vl_c), 0)**2) / 2
     
     auc_scores.append(roc_auc_score(yc_vl, v_churn))
     rmse_scores.append(np.sqrt(mean_squared_error(train_df_raw.iloc[v_idx]['target_ltv'], v_ltv)))
     
-    # 테스트 데이터 예측 누적
     churn_preds += (m_c_l.predict_proba(X_test_lgb)[:, 1] + m_c_cb.predict_proba(X_test_cat)[:, 1]) / 10
     ltv_preds += (np.maximum(m_l_l.predict(X_test_lgb), 0)**2 + np.maximum(m_l_cb.predict(X_test_cat), 0)**2) / 10
     print(f"Fold {fold+1} 완료: AUC = {auc_scores[-1]:.4f}")
@@ -165,10 +164,10 @@ print(f"대회 산식 최종 Score: {final_score:.5f}")
 print(f"=============================================")
 
 # 제출 파일 생성
-#submission = pd.DataFrame({
-#    'customer_id': test_df_raw['customer_id'],
-#    'target_churn': churn_preds,
-#    'target_ltv': ltv_preds
-#})
-#submission.to_csv('submission.csv', index=False)
-#print("✅ 제출 파일(submission.csv)이 생성되었습니다.")
+submission = pd.DataFrame({
+    'customer_id': test_df_raw['customer_id'],
+    'target_churn': churn_preds,
+    'target_ltv': ltv_preds
+})
+submission.to_csv('submission.csv', index=False)
+print("제출 파일(submission.csv)이 생성되었습니다.")
